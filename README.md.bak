@@ -1,6 +1,3 @@
-<!-- badges -->
-[![CI](https://github.com/PhakinMelo99/actix-next-docker/actions/workflows/ci.yml/badge.svg)](https://github.com/PhakinMelo99/actix-next-docker/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 # Actix (Rust) + Next.js (Docker Dev Stack)
 
 ## โครงสร้าง
@@ -25,4 +22,3 @@ docker compose -f docker-compose.dev.yml up --build
 ## โปรดอ่าน
 - ใน dev เรา proxy ผ่าน \/api/backend/*\ เพื่อให้ client-side ทำงานแม้ backend จะอยู่ใน container
 - สำหรับ production แนะนำแยก compose/traefik/nginx หรือปรับ NEXT_PUBLIC_* ให้ชี้ domain จริง
-
