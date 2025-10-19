@@ -30,17 +30,3 @@ ENV RUST_LOG=info
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/backend"]
-
-# -------- dev (watch) --------
-FROM rust:1.90.0-slim-bookworm AS dev
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config libssl-dev ca-certificates build-essential && \
-    cargo install cargo-watch && \
-    rm -rf /var/lib/apt/lists/*
-
-# cache deps
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main(){println!(\"dummy\");}" > src/main.rs && \
-    cargo build && rm -rf src

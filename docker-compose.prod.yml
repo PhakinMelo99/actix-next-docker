@@ -1,0 +1,56 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: actix-backend
+    environment:
+      - RUST_LOG=info,actix_web=info
+      - RUST_BACKTRACE=0
+      - API_KEY=${API_KEY:-change_me}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [appnet]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: next-frontend
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=/api
+      - BACKEND_INTERNAL_URL=http://backend:8080
+    command: |
+      sh -lc "npm ci && npm run build && npm start"
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks: [appnet]
+
+  proxy:
+    image: nginx:stable-alpine
+    container_name: edge-proxy
+    volumes:
+      - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks: [appnet]
+
+networks:
+  appnet:
+    driver: bridge

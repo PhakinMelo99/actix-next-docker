@@ -9,7 +9,9 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -18,20 +20,11 @@ jobs:
       - name: Cargo build (release)
         run: cargo build --release --locked
 
-  backend_lints:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: fmt
-        run: cargo fmt --all -- --check
-      - name: clippy
-        run: cargo clippy -- -D warnings
-
   frontend:
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend } }
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,20 +38,6 @@ jobs:
         run: npx tsc --noEmit
       - name: Next build
         run: npm run build
-
-  frontend_lints:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 'current'
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
-      - run: npm ci
-      - name: ESLint
-        run: npx eslint . --max-warnings=0
 
   docker-dev-build:
     runs-on: ubuntu-latest

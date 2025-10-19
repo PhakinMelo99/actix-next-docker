@@ -27,7 +27,7 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - NEXT_PUBLIC_API_URL=/api/backend
-      - BACKEND_INTERNAL_URL=http://backend-watch:8080
+      - BACKEND_INTERNAL_URL=http://backend-dev:8080
     ports:
       - "3000:3000"
     volumes:
@@ -41,4 +41,3 @@ services:
 networks:
   appnet:
     driver: bridge
-
