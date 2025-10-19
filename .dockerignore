@@ -1,0 +1,13 @@
+# ไม่ให้ Docker context บวม
+.git
+.gitignore
+.gitattributes
+**/node_modules
+**/target
+**/dist
+**/.next
+**/.env
+**/.env.*
+Dockerfile*
+docker-compose*.yml
+README.md

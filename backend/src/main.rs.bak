@@ -1,0 +1,137 @@
+use actix_cors::Cors;
+use actix_web::middleware::Logger; use actix_web::{
+    get, post, web, App, HttpResponse, HttpServer, Responder, Result
+};
+use serde::{Deserialize, Serialize};
+use std::{env, sync::Mutex, time::Duration};
+use async_stream::stream;
+use bytes::Bytes;
+
+#[derive(Serialize)]
+struct HelloResp { message: String, from: String }
+
+#[get("/api/hello")]
+async fn hello() -> impl Responder {
+    HttpResponse::Ok().json(HelloResp {
+        message: "Hello from Actix!".into(),
+        from: "actix-web".into(),
+    })
+}
+
+#[get("/api/healthz")]
+async fn healthz() -> impl Responder {
+    HttpResponse::Ok().body("ok")
+}
+
+#[derive(Deserialize)]
+struct EchoQuery { name: Option<String> }
+
+#[get("/api/echo")]
+async fn echo_q(query: web::Query<EchoQuery>) -> impl Responder {
+    let name = query.name.clone().unwrap_or_else(|| "anonymous".into());
+    HttpResponse::Ok().json(serde_json::json!({
+        "echo": format!("Hello, {name}!"),
+        "query_name": name
+    }))
+}
+
+#[get("/api/user/{id}")]
+async fn user_path(path: web::Path<(u32,)>) -> impl Responder {
+    let id = path.into_inner().0;
+    HttpResponse::Ok().json(serde_json::json!({
+        "id": id,
+        "role": if id % 2 == 0 { "admin" } else { "user" }
+    }))
+}
+
+#[derive(Deserialize)]
+struct SumReq { numbers: Vec<f64> }
+
+#[derive(Serialize)]
+struct SumResp { sum: f64, count: usize, avg: f64 }
+
+#[post("/api/sum")]
+async fn sum_numbers(payload: web::Json<SumReq>) -> impl Responder {
+    let sum: f64 = payload.numbers.iter().sum();
+    let count = payload.numbers.len();
+    let avg = if count > 0 { sum / count as f64 } else { 0.0 };
+    HttpResponse::Ok().json(SumResp { sum, count, avg })
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct Todo { id: u64, title: String, done: bool }
+
+#[derive(Default)]
+struct AppState {
+    todos: Mutex<Vec<Todo>>,
+}
+
+#[derive(Deserialize)]
+struct TodoCreate { title: String }
+
+#[post("/api/todos")]
+async fn create_todo(state: web::Data<AppState>, payload: web::Json<TodoCreate>) -> Result<impl Responder> {
+    let mut store = state.todos.lock().unwrap();
+    let id = (store.last().map(|t| t.id).unwrap_or(0)) + 1;
+    let todo = Todo { id, title: payload.title.clone(), done: false };
+    store.push(todo.clone());
+    Ok(HttpResponse::Created().json(todo))
+}
+
+#[get("/api/todos")]
+async fn list_todos(state: web::Data<AppState>) -> impl Responder {
+    let store = state.todos.lock().unwrap();
+    HttpResponse::Ok().json(&*store)
+}
+
+/// SSE: stream tick ทุก 1 วินาที
+#[get("/api/time-stream")]
+async fn time_stream() -> impl Responder {
+    let s = stream! {
+        let mut tick: u64 = 0;
+        loop {
+            tick += 1;
+            let event = format!("data: {{\"tick\": {tick}}}\n\n");
+            yield Ok::<Bytes, actix_web::Error>(Bytes::from(event));
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    };
+
+    HttpResponse::Ok()
+        .append_header(("Content-Type", "text/event-stream"))
+        .append_header(("Cache-Control", "no-cache"))
+        .append_header(("Connection", "keep-alive"))
+        .streaming(s)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    let allowed_origin =
+        env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+
+    println!("Starting server on 0.0.0.0:8080, CORS -> {allowed_origin}");
+
+    HttpServer::new(move || {
+        let cors = Cors::default()
+            .allowed_origin(&allowed_origin)
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+            .allow_any_header()
+            .supports_credentials()
+            .max_age(3600);
+
+        App::new().wrap(Logger::new(r#"%{r}a %r -> %s %b bytes in %D µs"#)).app_data(web::Data::new(AppState::default()))
+            .wrap(cors)
+            .service(hello)
+            .service(healthz)
+            .service(echo_q)
+            .service(user_path)
+            .service(sum_numbers)
+            .service(create_todo)
+            .service(list_todos)
+            .service(time_stream)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
+}
+

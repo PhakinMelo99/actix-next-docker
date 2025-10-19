@@ -1,0 +1,10 @@
+# บังคับ normalize เป็น LF ใน repo (Windows จะ checkout เป็น CRLF ตาม core.autocrlf)
+* text=auto
+
+# บางไฟล์ให้เก็บเป็น binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
